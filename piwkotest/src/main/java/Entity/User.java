@@ -38,17 +38,17 @@ public class User  {
 
     @OneToMany(cascade = CascadeType.ALL)
     @LazyCollection(LazyCollectionOption.FALSE)
-    @JoinColumn(name="id_users")//"id_users tak zapisuje sie w tabeli report
+    @JoinColumn(name="id_users")//"id_users tak zapisuje sie w tabeli hops
             List<Hops> hopsList=new ArrayList<>();
 
     @OneToMany(cascade = CascadeType.ALL)
     @LazyCollection(LazyCollectionOption.FALSE)
-    @JoinColumn(name="id_users")//"id_users tak zapisuje sie w tabeli queue
+    @JoinColumn(name="id_users")//"id_users tak zapisuje sie w tabeli malt
             List<Malt> maltList=new ArrayList<>();
 
     @OneToMany(cascade = CascadeType.ALL)
     @LazyCollection(LazyCollectionOption.FALSE)
-    @JoinColumn(name="id_users")//"id_users tak zapisuje sie w tabeli done
+    @JoinColumn(name="id_users")//"id_users tak zapisuje sie w tabeli yeast
             List<Yeast> yeastList=new ArrayList<>();
 
 

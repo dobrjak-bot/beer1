@@ -42,16 +42,19 @@ public class SecurityConfig extends WebSecurityConfigurerAdapter
     protected void configure(HttpSecurity http) throws Exception {
         http.csrf().disable()
                 .authorizeRequests()
-                .antMatchers("/test1").authenticated()
-                .antMatchers("/test2").hasRole("ADMIN")
                 .antMatchers("/completehops").authenticated()
                 .antMatchers("/completemalt").authenticated()
                 .antMatchers("/completeyeast").authenticated()
-                .antMatchers("/test4").authenticated()
+                .antMatchers("/whoim").authenticated()
+                .antMatchers("/supplies").authenticated()
+                .antMatchers("/deletemoldy").authenticated()
+                .antMatchers("/deleteused").authenticated()
+                .antMatchers("/logs").hasRole("ADMIN")
                 .and()
                 .formLogin().permitAll();
     }
 
+    //sprawdzanie princepalow usera
     @Bean
     DaoAuthenticationProvider authenticationProvider()
     {
@@ -62,6 +65,7 @@ public class SecurityConfig extends WebSecurityConfigurerAdapter
     }
 
 
+    //hasowanie hasel
     @Bean
     public PasswordEncoder passwordEncoder()
     {

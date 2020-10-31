@@ -2,62 +2,66 @@ package com.example.piwkotest;
 
 
 import Entity.*;
-import Service.MailService;
-import Service.TokenService;
-import Service.UserService;
-import Service.YeastService;
+import Service.*;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.hateoas.client.Hop;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.crypto.password.PasswordEncoder;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestParam;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 
+import java.io.File;
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
-import java.util.Arrays;
-import java.util.Date;
+import java.util.*;
 
 
 @RestController
-public class test {
+public class test
+{
 
     UserService userService;
     PasswordEncoder passwordEncoder;
     TokenService tokenService;
     MailService mailService;
     YeastService yeastService;
+    MaltService maltService;
+    HopsService hopsService;
+
+    String date2 = "2020-01-01";
+    DateTimeFormatter df = DateTimeFormatter.ofPattern("yyyy-MM-dd");
+    LocalDate  datefromuser = LocalDate.parse(date2,df);
+    java.sql.Date date =java.sql.Date.valueOf( datefromuser );
+
+
+    Logger logger= LoggerFactory.getLogger(test.class);
 
 
     @Autowired
-    public test(UserService userService, PasswordEncoder passwordEncoder, TokenService tokenService, MailService mailService, YeastService yeastService) {
+    public test(UserService userService, PasswordEncoder passwordEncoder, TokenService tokenService, MailService mailService, YeastService yeastService, MaltService maltService,HopsService hopsService)
+    {
         this.userService = userService;
         this.passwordEncoder = passwordEncoder;
         this.tokenService = tokenService;
         this.mailService = mailService;
         this.yeastService=yeastService;
+        this.maltService=maltService;
+        this.hopsService=hopsService;
     }
 
 
-    @GetMapping("/test1")
-    public String test1() {
-        return "test=1";
-    }
-
-    @GetMapping("/test2")
-    public String test2() {
-        return "test2";
-    }
-
-    @GetMapping("/test3")
-    public String test3() {
-        return "test3";
-    }
 
     @PostMapping("/register")
-    public void Register(@RequestParam String login, String password, String email)
+    public ResponseEntity Register(@RequestParam String login, String password, String email)
     {
+        logger.error("Someone create new account login = " + login + "  password= " +password + "  email = " + email);
         String role = "ROLE_USER";
         Boolean enable=false;
         User user = new User(login, passwordEncoder.encode(password), email, role,enable);
@@ -66,99 +70,225 @@ public class test {
         tokenService.save(token);
         userService.save(user);
         mailService.SenderMail(user.getEmail(), "link : http://localhost:8080//activation    Your token=" + token.getValue(), "activation of your account");
+        return ResponseEntity.ok().build();
     }
 
 
     @PostMapping("/activation")
-    public void Activation(@RequestParam String login,int value)
+    public ResponseEntity Activation(@RequestParam String login,int value)
     {
         User userr = userService.findByLogin(login);
         int valueoftoken= userr.getToken().getValue();
 
-
         if(userr!=null && valueoftoken==value)
         {
+            logger.error(login+" has been activated");
             userr.setEnabled(true);
             userService.save(userr);
+            return ResponseEntity.ok().build();
+        }
+        else
+        {
+            return ResponseEntity.status(HttpStatus.CONFLICT).build();
         }
     }
 
     @PostMapping("/completehops")
-    public void CompleteHops(@RequestParam int count, String date)
+    public ResponseEntity CompleteHops(@RequestParam int count, String date)
     {
         String date2 = date;
         DateTimeFormatter df = DateTimeFormatter.ofPattern("yyyy-MM-dd");
         LocalDate  datefromuser = LocalDate.parse(date2,df);
+
         String loggeduser = SecurityContextHolder.getContext().getAuthentication().getName();
         User user =userService.findByLogin(loggeduser);
-
-        for (int i = 0; i < count;  i++)
+        if(user!= null)
         {
-            Hops hops= new Hops(datefromuser);
-            user.getHopsList().add(hops);
-
+            for (int i = 0; i < count;  i++)
+            {
+                Hops hops= new Hops(datefromuser);
+                user.getHopsList().add(hops);
+            }
+            userService.save(user);
+            logger.error(loggeduser+" add  " + count+" of hops , expiration date" + datefromuser);
+            return ResponseEntity.ok().build();
         }
-        userService.save(user);
+        else
+        {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).build();
+        }
     }
 
     @PostMapping("/completemalt")
-    public void CompleteMalt(@RequestParam int count, String date)
+    public ResponseEntity CompleteMalt(@RequestParam int count, String date)
     {
         String date2 = date;
         DateTimeFormatter df = DateTimeFormatter.ofPattern("yyyy-MM-dd");
         LocalDate  datefromuser = LocalDate.parse(date2,df);
+
         String loggeduser = SecurityContextHolder.getContext().getAuthentication().getName();
         User user =userService.findByLogin(loggeduser);
-
-        for (int i = 0; i < count;  i++)
+        if(user!= null)
         {
-            Malt malt= new Malt(datefromuser);
-            user.getMaltList().add(malt);
-
+            for (int i = 0; i < count;  i++)
+            {
+                Malt malt= new Malt(datefromuser);
+                user.getMaltList().add(malt);
+            }
+            userService.save(user);
+            logger.error(loggeduser+" add  " + count+" of malt , expiration date" + datefromuser);
+            return ResponseEntity.ok().build();
         }
-        userService.save(user);
+        else
+        {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).build();
+        }
+
     }
 
     @PostMapping("/completeyeast")
-    public void CompleteYeast(@RequestParam int count, String date)
+    public ResponseEntity CompleteYeast(@RequestParam int count, String date)
     {
         String date2 = date;
         DateTimeFormatter df = DateTimeFormatter.ofPattern("yyyy-MM-dd");
         LocalDate  datefromuser = LocalDate.parse(date2,df);
+
         String loggeduser = SecurityContextHolder.getContext().getAuthentication().getName();
         User user =userService.findByLogin(loggeduser);
 
-        for (int i = 0; i < count;  i++)
+        if(user!= null)
         {
-            Yeast yeast= new Yeast(datefromuser);
-            user.getYeastList().add(yeast);
-
+            for (int i = 0; i < count;  i++)
+            {
+                Yeast yeast= new Yeast(datefromuser);
+                user.getYeastList().add(yeast);
+            }
+            userService.save(user);
+            logger.error(loggeduser+" add  " + count+" of yeast  , expiration date" + datefromuser);
+            return ResponseEntity.ok().build();
         }
-        userService.save(user);
+        else
+        {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).build();
+        }
 
     }
 
-//DZIALA KURWA
-    @GetMapping("/test4")
-    public void abc()
+
+
+    @GetMapping("/supplies")
+    public String Supplies()
     {
-        String date2 = "2020-05-05";
-        DateTimeFormatter df = DateTimeFormatter.ofPattern("yyyy-MM-dd");
-        LocalDate  d1 = LocalDate.parse(date2,df);
-        String user1 = SecurityContextHolder.getContext().getAuthentication().getName();
-        int count=4;
-        User user =userService.findByLogin(user1);
+        String loggeduser = SecurityContextHolder.getContext().getAuthentication().getName();
+        User user =userService.findByLogin(loggeduser);
 
-        for (int i = 0; i < count;  i++)
+        int YeastCount=user.getYeastList().size();
+        int HopsCount=user.getHopsList().size();
+        int  MaltCount= user.getMaltList().size();
+
+        int count_of_moldy_hops=hopsService.findByDate(user.getId_users(), date).size();
+        int count_of_moldy_malt=maltService.findByDate(user.getId_users(), date).size();
+        int count_of_moldy_yeast=yeastService.findByDate(user.getId_users(), date).size();
+
+        if(user!= null)
         {
-            System.out.println("dupa");
-            Malt malt= new Malt(d1);
-            user.getMaltList().add(malt);
-             Yeast yeast= new Yeast(d1);
-            user.getYeastList().add(yeast);
-
+            logger.error(loggeduser+" he checked his inventory");
+            return "   yeastCount=   " +YeastCount +"" +
+                    "    HopsCount =   "+HopsCount +
+                    "   MaltCount=   " +MaltCount +" " +
+                    "  count of moldy yeast=  "+count_of_moldy_yeast +
+                    "   count of moldy malt =  "+count_of_moldy_malt +
+                    "   count of moldy hops =  "+count_of_moldy_hops ;
         }
-        userService.save(user);
+        else
+        {
+            return null;
+        }
+
+    }
+
+
+    @DeleteMapping("/deletemoldy")
+    public ResponseEntity DeleteMoldy()
+    {
+        String loggeduser = SecurityContextHolder.getContext().getAuthentication().getName();
+        User user =userService.findByLogin(loggeduser);
+
+        if(user!= null)
+        {
+            List<Hops> HopsToDelete = hopsService.findByDate(user.getId_users(), date);
+            List<Malt> MaltToDelete = maltService.findByDate(user.getId_users(), date);
+            List<Yeast> YeastToDelete = yeastService.findByDate(user.getId_users(), date);
+            hopsService.deleteMoldy(HopsToDelete);
+            maltService.deleteMoldy(MaltToDelete);
+            yeastService.deleteMoldy(YeastToDelete);
+            logger.error(loggeduser + " he deleted moldy supplies");
+            return ResponseEntity.ok().build();
+        }
+        else
+        {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).build();
+        }
+    }
+
+
+    @DeleteMapping("/deleteused")
+    public ResponseEntity DeleteUsed(@RequestParam Integer count)
+    {
+
+        String loggeduser = SecurityContextHolder.getContext().getAuthentication().getName();
+        User user = userService.findByLogin(loggeduser);
+
+        List<Hops> HopsNotMoldy = hopsService.findByDate2(user.getId_users(), date);
+        List<Malt> MaltNotMoldy = maltService.findByDate2(user.getId_users(), date);
+        List<Yeast> YeastNotMoldy = yeastService.findByDate2(user.getId_users(), date);
+
+        ArrayList<Hops> hopstodelete = new ArrayList<Hops>();
+        ArrayList<Malt> malttodelete = new ArrayList<Malt>();
+        ArrayList<Yeast> yeasttodelete = new ArrayList<Yeast>();
+
+        if(user!= null)
+        {
+            for (int i = 0; i < count;  i++)
+            {
+                hopstodelete.add(HopsNotMoldy.get(i));
+                malttodelete.add(MaltNotMoldy.get(i));
+                yeasttodelete.add(YeastNotMoldy.get(i));
+            }
+            hopsService.deleteUsed(hopstodelete);
+            maltService.deleteUsed(malttodelete);
+            yeastService.deleteUsed(yeasttodelete);
+            logger.error(loggeduser+"  he delete used supplies");
+            return ResponseEntity.ok().build();
+        }
+        else
+        {
+           return ResponseEntity.status(HttpStatus.NOT_FOUND).build();
+        }
+    }
+
+    @GetMapping("/logs")
+    public String getLogs() throws IOException 
+    {
+      String loggeduser = SecurityContextHolder.getContext().getAuthentication().getName();
+      User user = userService.findByLogin(loggeduser);
+
+      if(user.getRoles().equals("ROLE_ADMIN"))
+      {
+          Path fileName = Path.of("D:"+ File.separator +"projekty"+ File.separator +"test query"+ File.separator +"piwkotest"+ File.separator +"logs"+ File.separator +"users-logger.log");
+          return  Files.readString(fileName);
+      }
+            return null;
+    }
+
+
+
+    @GetMapping("/whoim")
+    public void asd()
+    {
+        String loggeduser = SecurityContextHolder.getContext().getAuthentication().getName();
+        logger.error(loggeduser + " to smiec");
+        System.out.print(loggeduser);
     }
 }
 
